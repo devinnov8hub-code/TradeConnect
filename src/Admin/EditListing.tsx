@@ -31,7 +31,6 @@ const EditListing = () => {
   const [minOrderQty, setMinOrderQty] = useState("");
   const [status, setStatus] = useState<ListingStatus>("active");
   const [deliveryFee, setDeliveryFee] = useState("");
-  const [total, setTotal] = useState("");
   const [image, setImage] = useState<File | null>(null);
   const imagePreviewUrl = useMemo(
     () => (image ? URL.createObjectURL(image) : null),

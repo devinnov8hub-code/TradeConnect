@@ -1,10 +1,8 @@
 import { useEffect, useState } from "react";
 import {
   ClipboardList,
-  MessageSquare,
   Package,
   ShoppingBag,
-  ShieldCheck,
   TrendingUp,
   Users,
   X,
@@ -34,7 +32,7 @@ import { getErrorMessage } from "../lib/getErrorMessage";
 import { formatDate, formatDays } from "../lib/format";
 import { useNavigate } from "react-router";
 import type { Activity } from "../lib/types/activity";
-import type { Notification, NotificationListParams } from "../lib/types/notification";
+import type { Notification} from "../lib/types/notification";
 
 const revenueData = [
   { month: "Jan", revenue: 22 },

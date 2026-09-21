@@ -6,8 +6,6 @@ import {
   ChartLine,
   ChevronDown,
   ClipboardList,
-  LayoutGrid,
-  LogOut,
   MessageSquare,
   Package,
   Settings,

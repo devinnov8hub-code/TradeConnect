@@ -2,7 +2,6 @@ import {
   Bell,
   ClipboardList,
   LayoutGrid,
-  LogOut,
   MessageSquare,
   Settings,
   ShoppingBag,
