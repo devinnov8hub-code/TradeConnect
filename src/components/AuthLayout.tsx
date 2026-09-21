@@ -34,7 +34,7 @@ export default function AuthLayout({
           <div className="mb-6 h-0.5 w-10 bg-dash-brown animate-fade-in-up animation-delay-100" />
 
           <p className="mb-4 text-xs font-semibold tracking-[0.2em] text-dash-brown animate-fade-in-up animation-delay-200">
-            ADMIN CONSOLE.
+            ADMIN CONSOLE
           </p>
 
           <h1 className="max-w-md text-4xl font-bold leading-tight animate-fade-in-up animation-delay-300">
