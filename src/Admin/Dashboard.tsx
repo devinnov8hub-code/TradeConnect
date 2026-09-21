@@ -44,39 +44,6 @@ const revenueData = [
   { month: "Jul", revenue: 88 },
 ];
 
-// const notifications = [
-//   {
-//     title: "Order #1285 needs confirmation",
-//     time: "8 mins ago",
-//     icon: ShoppingBag,
-//     color: "bg-primary/10 text-primary",
-//   },
-//   {
-//     title: "New farmer application received",
-//     time: "22 mins ago",
-//     icon: Users,
-//     color: "bg-sky-100 text-sky-600",
-//   },
-//   {
-//     title: "Dispute #07 has a new message",
-//     time: "1h ago",
-//     icon: MessageSquare,
-//     color: "bg-rose-100 text-rose-600",
-//   },
-//   {
-//     title: "Listing #120 approved",
-//     time: "2h ago",
-//     icon: Package,
-//     color: "bg-emerald-100 text-emerald-600",
-//   },
-//   {
-//     title: "Order #1271 delivered",
-//     time: "1d ago",
-//     icon: ShieldCheck,
-//     color: "bg-emerald-100 text-emerald-600",
-//   },
-// ];
-
 const Dashboard = () => {
   const [showActivity, setShowActivity] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);

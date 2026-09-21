@@ -29,37 +29,6 @@ import type { Activity, ActivityType } from "../lib/types/activity";
 const tabs = ["Overview", "Listings", "Orders", "Activity Log"] as const;
 type Tab = (typeof tabs)[number];
 
-// const activityLog = [
-//   {
-//     event: "Order #1284 confirmed",
-//     detail: "Big Tomatoes — 5kg",
-//     time: "2m ago",
-//     icon: ShieldCheck,
-//     color: "text-emerald-600 bg-emerald-50",
-//   },
-//   {
-//     event: "Listing published",
-//     detail: "Fresh Onions — ₦750/kg",
-//     time: "52m ago",
-//     icon: Package,
-//     color: "text-sky-600 bg-sky-50",
-//   },
-//   {
-//     event: "Order #1154 shipped",
-//     detail: "Cassava — in transit",
-//     time: "1d ago",
-//     icon: ShieldCheck,
-//     color: "text-emerald-600 bg-emerald-50",
-//   },
-//   {
-//     event: "Dispute #07 opened",
-//     detail: "Order #1098 · Quality issue",
-//     time: "1w ago",
-//     icon: AlertTriangle,
-//     color: "text-rose-600 bg-rose-50",
-//   },
-// ];
-
 export default function FarmerProfile() {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<Tab>("Overview");
@@ -89,7 +58,7 @@ export default function FarmerProfile() {
       try {
         const response = await getFarmerActivities(farmerId);
         setFarmerActivity(response);
-        console.log("farmer activity",response)
+        console.log("farmer activity", response);
       } catch (error) {
         getErrorMessage(error);
       }
