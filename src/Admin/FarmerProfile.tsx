@@ -14,6 +14,7 @@ import Avatar from "../components/Avatar";
 import StatusBadge from "../components/StatusBadge";
 import {
   getFarmer,
+  getFarmerActivities,
   setFarmerStatus,
   setFarmerVerification,
 } from "../lib/services/farmers.service";
@@ -22,41 +23,42 @@ import {
   type FarmerVerificationStatus,
 } from "../lib/types/farmer";
 import { getErrorMessage } from "../lib/getErrorMessage";
-import { formatDate } from "../lib/format";
+import { formatDate, formatDays } from "../lib/format";
+import type { Activity, ActivityType } from "../lib/types/activity";
 
 const tabs = ["Overview", "Listings", "Orders", "Activity Log"] as const;
 type Tab = (typeof tabs)[number];
 
-const activityLog = [
-  {
-    event: "Order #1284 confirmed",
-    detail: "Big Tomatoes — 5kg",
-    time: "2m ago",
-    icon: ShieldCheck,
-    color: "text-emerald-600 bg-emerald-50",
-  },
-  {
-    event: "Listing published",
-    detail: "Fresh Onions — ₦750/kg",
-    time: "52m ago",
-    icon: Package,
-    color: "text-sky-600 bg-sky-50",
-  },
-  {
-    event: "Order #1154 shipped",
-    detail: "Cassava — in transit",
-    time: "1d ago",
-    icon: ShieldCheck,
-    color: "text-emerald-600 bg-emerald-50",
-  },
-  {
-    event: "Dispute #07 opened",
-    detail: "Order #1098 · Quality issue",
-    time: "1w ago",
-    icon: AlertTriangle,
-    color: "text-rose-600 bg-rose-50",
-  },
-];
+// const activityLog = [
+//   {
+//     event: "Order #1284 confirmed",
+//     detail: "Big Tomatoes — 5kg",
+//     time: "2m ago",
+//     icon: ShieldCheck,
+//     color: "text-emerald-600 bg-emerald-50",
+//   },
+//   {
+//     event: "Listing published",
+//     detail: "Fresh Onions — ₦750/kg",
+//     time: "52m ago",
+//     icon: Package,
+//     color: "text-sky-600 bg-sky-50",
+//   },
+//   {
+//     event: "Order #1154 shipped",
+//     detail: "Cassava — in transit",
+//     time: "1d ago",
+//     icon: ShieldCheck,
+//     color: "text-emerald-600 bg-emerald-50",
+//   },
+//   {
+//     event: "Dispute #07 opened",
+//     detail: "Order #1098 · Quality issue",
+//     time: "1w ago",
+//     icon: AlertTriangle,
+//     color: "text-rose-600 bg-rose-50",
+//   },
+// ];
 
 export default function FarmerProfile() {
   const navigate = useNavigate();
@@ -68,6 +70,7 @@ export default function FarmerProfile() {
   const [farmerStatusState, setFarmerStatusState] = useState<
     "active" | "inactive"
   >();
+  const [farmerActivity, setFarmerActivity] = useState<Activity[]>([]);
   const params = useParams();
   const farmerId = Number(params.id);
 
@@ -77,12 +80,22 @@ export default function FarmerProfile() {
         const response = await getFarmer(farmerId);
         setFarmer(response);
         setVerificationStatus(response.verification_status);
-        console.log("Farmer profile fetched successfully:", response);
+        setFarmerStatusState(response.status);
+      } catch (error) {
+        getErrorMessage(error);
+      }
+    };
+    const handleFarmerActivities = async (farmerId: number) => {
+      try {
+        const response = await getFarmerActivities(farmerId);
+        setFarmerActivity(response);
+        console.log("farmer activity",response)
       } catch (error) {
         getErrorMessage(error);
       }
     };
     handleFarmerProfile(farmerId);
+    handleFarmerActivities(farmerId);
   }, [farmerId]);
 
   const handleVerifyFarmer = async (
@@ -92,7 +105,6 @@ export default function FarmerProfile() {
     try {
       const response = await setFarmerVerification(id, status);
       setVerificationStatus(response.verification_status);
-      console.log("Farmer verification status updated successfully:", response);
     } catch (error) {
       getErrorMessage(error);
     }
@@ -105,7 +117,6 @@ export default function FarmerProfile() {
     try {
       const response = await setFarmerStatus(id, status);
       setFarmerStatusState(response.status);
-      console.log("Farmer status updated successfully:", response);
     } catch (error) {
       getErrorMessage(error);
     }
@@ -138,7 +149,7 @@ export default function FarmerProfile() {
                 <h1 className="text-xl font-semibold text-slate-900">
                   {farmer?.name}
                 </h1>
-                <StatusBadge status={farmer?.status} />
+                <StatusBadge status={farmerStatusState ?? farmer?.status} />
               </div>
               <p className="mt-0.5 text-sm text-slate-500">
                 {farmer?.phone_number}
@@ -151,10 +162,17 @@ export default function FarmerProfile() {
           </div>
           <div className="flex flex-wrap gap-2">
             <button
-              onClick={() => handleFarmerStatusChange(farmerId, status === "active" ? "inactive" : "active")}
+              onClick={() =>
+                handleFarmerStatusChange(
+                  farmerId,
+                  farmerStatusState === "active" ? "inactive" : "active",
+                )
+              }
               className="rounded-xl border border-slate-200 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
             >
-              {farmerStatusState === "active" ? "Deactivate Farmer" : "Activate Farmer"}
+              {farmerStatusState === "active"
+                ? "Deactivate Farmer"
+                : "Activate Farmer"}
             </button>
             <button
               onClick={() => handleVerifyFarmer(farmerId, "verified")}
@@ -166,13 +184,10 @@ export default function FarmerProfile() {
               onClick={() => handleVerifyFarmer(farmerId, "rejected")}
               className="rounded-xl border border-rose-200 px-4 py-2 text-sm font-medium text-rose-600 hover:bg-rose-50"
             >
-              {verificationStatus === "rejected"
-                ? "Suspended"
-                : "Suspend Farmer"}
+              {verificationStatus === "rejected" ? "Rejected" : "Reject Farmer"}
             </button>
           </div>
         </div>
-
 
         {/* Stats */}
         <div className="mt-6 grid grid-cols-3 divide-x divide-slate-100 rounded-2xl bg-global-bg">
@@ -225,17 +240,27 @@ export default function FarmerProfile() {
 
         {/* Tab content */}
         <div className="mt-6">
-          {activeTab === "Overview" && <OverviewTab farmer={farmer} />}
+          {activeTab === "Overview" && (
+            <OverviewTab farmer={farmer} activities={farmerActivity} />
+          )}
           {activeTab === "Listings" && <ListingsTab farmer={farmer} />}
           {activeTab === "Orders" && <OrdersTab farmer={farmer} />}
-          {activeTab === "Activity Log" && <ActivityLogTab />}
+          {activeTab === "Activity Log" && (
+            <ActivityLogTab activities={farmerActivity} />
+          )}
         </div>
       </div>
     </Layout>
   );
 }
 
-function OverviewTab({ farmer }: { farmer: Farmer | null }) {
+function OverviewTab({
+  farmer,
+  activities,
+}: {
+  farmer: Farmer | null;
+  activities: Activity[];
+}) {
   return (
     <div className="grid gap-6 lg:grid-cols-2">
       {/* Farm Information */}
@@ -346,22 +371,24 @@ function OverviewTab({ farmer }: { farmer: Farmer | null }) {
             History Timeline
           </h3>
           <div className="space-y-3">
-            {activityLog.map((item, idx) => {
-              const Icon = item.icon;
+            {activities?.map((item, idx) => {
+              const { icon: Icon, color } = activityStyles[item.type];
               return (
                 <div key={idx} className="flex items-start gap-3">
                   <div
-                    className={`mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-xl ${item.color}`}
+                    className={`mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-xl ${color}`}
                   >
                     <Icon className="h-4 w-4" />
                   </div>
                   <div className="flex-1">
                     <p className="text-sm font-medium text-slate-800">
-                      {item.event}
+                      {item.title}
                     </p>
-                    <p className="text-xs text-slate-500">{item.detail}</p>
+                    <p className="text-xs text-slate-500">{item.description}</p>
                   </div>
-                  <p className="shrink-0 text-xs text-slate-400">{item.time}</p>
+                  <p className="shrink-0 text-xs text-slate-400">
+                    {formatDays(item.occurred_at)}
+                  </p>
                 </div>
               );
             })}
@@ -375,43 +402,43 @@ function OverviewTab({ farmer }: { farmer: Farmer | null }) {
 function ListingsTab({ farmer }: { farmer: Farmer | null }) {
   return (
     <div className="overflow-x-auto">
-    <table className="w-full min-w-120 text-left text-sm">
-      <thead>
-        <tr className="text-slate-500">
-          <th className="pb-3 font-medium">Produce</th>
-          <th className="pb-3 font-medium">Price</th>
-          <th className="pb-3 font-medium">Stock</th>
-          <th className="pb-3 font-medium">Status</th>
-        </tr>
-      </thead>
-      <tbody>
-        {farmer?.listings?.map((item, idx) => (
-          <tr key={idx} className="border-t border-slate-100">
-            <td className="py-3">
-              <div className="flex items-center gap-3">
-                <img
-                  className="flex h-10 w-10 items-center justify-center rounded-xl bg-global-bg text-xl"
-                  src={item.produce.image_url}
-                />
-                <div>
-                  <p className="font-medium text-slate-900">
-                    {item.produce.name}
-                  </p>
-                  <p className="text-xs text-slate-400">
-                    {item.produce.category.name}
-                  </p>
-                </div>
-              </div>
-            </td>
-            <td className="py-3 font-medium text-primary">{item.price}</td>
-            <td className="py-3 text-slate-600">{item.stock}</td>
-            <td className="py-3">
-              <StatusBadge status={item.status} />
-            </td>
+      <table className="w-full min-w-120 text-left text-sm">
+        <thead>
+          <tr className="text-slate-500">
+            <th className="pb-3 font-medium">Produce</th>
+            <th className="pb-3 font-medium">Price</th>
+            <th className="pb-3 font-medium">Stock</th>
+            <th className="pb-3 font-medium">Status</th>
           </tr>
-        ))}
-      </tbody>
-    </table>
+        </thead>
+        <tbody>
+          {farmer?.listings?.map((item, idx) => (
+            <tr key={idx} className="border-t border-slate-100">
+              <td className="py-3">
+                <div className="flex items-center gap-3">
+                  <img
+                    className="flex h-10 w-10 items-center justify-center rounded-xl bg-global-bg text-xl"
+                    src={item.produce.image_url}
+                  />
+                  <div>
+                    <p className="font-medium text-slate-900">
+                      {item.produce.name}
+                    </p>
+                    <p className="text-xs text-slate-400">
+                      {item.produce.category.name}
+                    </p>
+                  </div>
+                </div>
+              </td>
+              <td className="py-3 font-medium text-primary">{item.price}</td>
+              <td className="py-3 text-slate-600">{item.stock}</td>
+              <td className="py-3">
+                <StatusBadge status={item.status} />
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
     </div>
   );
 }
@@ -419,59 +446,80 @@ function ListingsTab({ farmer }: { farmer: Farmer | null }) {
 function OrdersTab({ farmer }: { farmer: Farmer | null }) {
   return (
     <div className="overflow-x-auto">
-    <table className="w-full min-w-120 text-left text-sm">
-      <thead>
-        <tr className="text-slate-500">
-          <th className="pb-3 font-medium">Order</th>
-          <th className="pb-3 font-medium">Buyer</th>
-          <th className="pb-3 font-medium">Amount</th>
-          <th className="pb-3 font-medium">Date</th>
-          <th className="pb-3 font-medium">Status</th>
-        </tr>
-      </thead>
-      <tbody>
-        {farmer?.recent_orders?.map((order, idx) => (
-          <tr key={idx} className="border-t border-slate-100">
-            <td className="py-3">
-              <p className="font-medium text-slate-900">{order.order_number}</p>
-              <p className="text-xs text-slate-400">{order.produce?.name}</p>
-            </td>
-            <td className="py-3 text-slate-600">{order.buyer?.name}</td>
-            <td className="py-3 font-medium text-slate-900">{order.total}</td>
-            <td className="py-3 text-slate-500">
-              {formatDate(order.placed_at)}
-            </td>
-            <td className="py-3">
-              <StatusBadge status={order.payment_status} />
-            </td>
+      <table className="w-full min-w-120 text-left text-sm">
+        <thead>
+          <tr className="text-slate-500">
+            <th className="pb-3 font-medium">Order</th>
+            <th className="pb-3 font-medium">Buyer</th>
+            <th className="pb-3 font-medium">Amount</th>
+            <th className="pb-3 font-medium">Date</th>
+            <th className="pb-3 font-medium">Status</th>
           </tr>
-        ))}
-      </tbody>
-    </table>
+        </thead>
+        <tbody>
+          {farmer?.recent_orders?.map((order, idx) => (
+            <tr key={idx} className="border-t border-slate-100">
+              <td className="py-3">
+                <p className="font-medium text-slate-900">
+                  {order.order_number}
+                </p>
+                <p className="text-xs text-slate-400">{order.produce?.name}</p>
+              </td>
+              <td className="py-3 text-slate-600">{order.buyer?.name}</td>
+              <td className="py-3 font-medium text-slate-900">{order.total}</td>
+              <td className="py-3 text-slate-500">
+                {formatDate(order.placed_at)}
+              </td>
+              <td className="py-3">
+                <StatusBadge status={order.payment_status} />
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
     </div>
   );
 }
 
-function ActivityLogTab() {
+const activityStyles: Record<
+  ActivityType,
+  { icon: typeof Package; color: string }
+> = {
+  order: { icon: ShieldCheck, color: "text-emerald-600 bg-emerald-50" },
+  listing: { icon: Package, color: "text-sky-600 bg-sky-50" },
+  dispute: { icon: AlertTriangle, color: "text-rose-600 bg-rose-50" },
+  farmer: { icon: ShieldCheck, color: "text-slate-600 bg-slate-100" },
+  buyer: { icon: Mail, color: "text-slate-600 bg-slate-100" },
+};
+
+function ActivityLogTab({ activities }: { activities: Activity[] }) {
+  if (activities.length === 0) {
+    return <p className="text-sm text-slate-500">No activity yet.</p>;
+  }
+
   return (
     <div className="space-y-4">
-      {activityLog.map((item, idx) => {
-        const Icon = item.icon;
+      {activities.map((item) => {
+        const { icon: Icon, color } = activityStyles[item.type];
         return (
           <div
-            key={idx}
+            key={item.id}
             className="flex items-start gap-4 rounded-2xl bg-global-bg px-5 py-4"
           >
             <div
-              className={`mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${item.color}`}
+              className={`mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${color}`}
             >
               <Icon className="h-4 w-4" />
             </div>
             <div className="flex-1">
-              <p className="font-medium text-slate-800">{item.event}</p>
-              <p className="text-sm text-slate-500">{item.detail}</p>
+              <p className="font-medium text-slate-800">{item.title}</p>
+              {item.description && (
+                <p className="text-sm text-slate-500">{item.description}</p>
+              )}
             </div>
-            <p className="shrink-0 text-sm text-slate-400">{item.time}</p>
+            <p className="shrink-0 text-sm text-slate-400">
+              {formatDays(item.occurred_at)}
+            </p>
           </div>
         );
       })}

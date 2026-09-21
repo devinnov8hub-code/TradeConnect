@@ -7,7 +7,7 @@ import {
   Users,
   X,
   Bell,
-  Clock
+  Clock,
 } from "lucide-react";
 import {
   LineChart,
@@ -32,7 +32,7 @@ import { getErrorMessage } from "../lib/getErrorMessage";
 import { formatDate, formatDays } from "../lib/format";
 import { useNavigate } from "react-router";
 import type { Activity } from "../lib/types/activity";
-import type { Notification} from "../lib/types/notification";
+import type { Notification } from "../lib/types/notification";
 
 const revenueData = [
   { month: "Jan", revenue: 22 },
@@ -43,7 +43,6 @@ const revenueData = [
   { month: "Jun", revenue: 73 },
   { month: "Jul", revenue: 88 },
 ];
-
 
 // const notifications = [
 //   {
@@ -156,7 +155,6 @@ const Dashboard = () => {
       try {
         const response = await getDashboardStats();
         setDashboardData(response);
-        console.log("Dashboard data fetched successfully:", response);
       } catch (error) {
         console.error("Error fetching dashboard data:", error);
       }
@@ -203,15 +201,18 @@ const Dashboard = () => {
   useEffect(() => {
     const getAllNotifications = async () => {
       try {
-        const response = await getNotifications({ status: "unread", per_page: 10 });
-        setNotifications(response.data || [])
+        const response = await getNotifications({
+          status: "unread",
+          per_page: 10,
+        });
+        setNotifications(response.data || []);
         console.log("Notifications fetched successfully:", response);
       } catch (err) {
         getErrorMessage(err);
       }
     };
     getAllNotifications();
-  },[]);
+  }, []);
 
   return (
     <>
@@ -344,7 +345,6 @@ const Dashboard = () => {
               </div>
               <div className="mt-5 space-y-4">
                 {recentActivity.slice(0, 4).map((item) => {
-                
                   return (
                     <div
                       key={item.title}
@@ -517,16 +517,15 @@ const Dashboard = () => {
               </button>
               <div className="space-y-3">
                 {notifications.map((n, idx) => {
-                  // const Icon = n.icon;
                   return (
                     <div
                       key={idx}
                       className="flex items-start gap-3 rounded-2xl border border-slate-100 bg-slate-50 p-4"
                     >
                       <div
-                        className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${n.entity}`}
+                        className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${n.message}`}
                       >
-                        {/* <Icon className="h-4 w-4" /> */}
+                        <Bell className="h-4 w-4" />
                       </div>
                       <div className="flex-1">
                         <p className="text-sm font-medium text-slate-900">
@@ -536,7 +535,7 @@ const Dashboard = () => {
                           {formatDate(n.created_at)}
                         </p>
                       </div>
-                      <span className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-primary" />
+                      <span className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-primary"></span>
                     </div>
                   );
                 })}
