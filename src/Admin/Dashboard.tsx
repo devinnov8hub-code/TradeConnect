@@ -123,7 +123,7 @@ const Dashboard = () => {
         const response = await getDashboardStats();
         setDashboardData(response);
       } catch (error) {
-        console.error("Error fetching dashboard data:", error);
+        getErrorMessage(error)
       }
     };
 
@@ -490,13 +490,13 @@ const Dashboard = () => {
                       className="flex items-start gap-3 rounded-2xl border border-slate-100 bg-slate-50 p-4"
                     >
                       <div
-                        className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${n.message}`}
+                        className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${n.title}`}
                       >
                         <Bell className="h-4 w-4" />
                       </div>
                       <div className="flex-1">
                         <p className="text-sm font-medium text-slate-900">
-                          {n.title}
+                          {n.message}
                         </p>
                         <p className="text-xs text-slate-400 mt-0.5">
                           {formatDate(n.created_at)}
