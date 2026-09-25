@@ -14,6 +14,7 @@ import type { CreateOrderPayload, DeliveryMethod } from "../lib/types/order";
 import { getErrorMessage } from "../lib/getErrorMessage";
 import { lgasByState, nigerianStates } from "../lib/data/nigeria-lgas";
 import Paystack from "@paystack/inline-js";
+import { toast, ToastContainer } from "react-toastify";
 
 export default function Checkout() {
   const { items, clear } = useCart();
@@ -32,6 +33,11 @@ export default function Checkout() {
     delivery_address: "",
     delivery_notes: "",
   });
+  const showError = (message: string) => {
+    setError(message);
+    toast.error(message);
+  };
+
   const handleSubmitForm = async () => {
     if (
       !form.delivery_address ||
@@ -40,17 +46,17 @@ export default function Checkout() {
       !form.delivery_state ||
       !form.delivery_lga
     ) {
-      setError("Some items are missing. Please complete the form to checkout.");
+      showError("Some items are missing. Please complete the form to checkout.");
       return false;
     }
 
     try {
       const orderDetails: CreateOrderPayload = {
-        // items: items,
+        // The backend calculates delivery_fee_per_unit/delivery_total itself —
+        // sending it here is rejected with a validation error.
         items: items.map((item) => ({
           listing_id: item.listing_id,
           quantity: item.quantity,
-          delivery_fee_per_unit: item.delivery_fee_per_unit,
         })),
         delivery_method: form.delivery_method,
         delivery_name: form.delivery_name,
@@ -61,10 +67,9 @@ export default function Checkout() {
         delivery_notes: form.delivery_notes,
       };
       const order = await createOrder(orderDetails);
-      console.log("Order created:", order);
       return order;
     } catch (err) {
-      setError(getErrorMessage(err));
+      showError(getErrorMessage(err));
       return false;
     }
   };
@@ -83,7 +88,6 @@ export default function Checkout() {
       setError("");
       const order = await handleSubmitForm();
       if (!order) return;
-      console.log(order);
       const payment = await initializeOrderPayment(order.id);
 
       const paystack = new Paystack();
@@ -92,7 +96,7 @@ export default function Checkout() {
           try {
             const verification = await verifyOrderPayment(order.id);
             if (verification.payment_status !== "paid") {
-              setError(
+              showError(
                 "We couldn't confirm your payment. Check My Orders shortly, or contact support if you were charged.",
               );
               return;
@@ -101,23 +105,24 @@ export default function Checkout() {
             setSummaryOpen(false);
             navigate("/marketplace/orders");
           } catch (err) {
-            setError(getErrorMessage(err));
+            showError(getErrorMessage(err));
           }
         },
         onCancel: () => {
-          setError("Payment was cancelled.");
+          showError("Payment was cancelled.");
         },
         onError: (err: { message: string }) => {
-          setError(err?.message || "Payment failed. Please try again.");
+          showError(err?.message || "Payment failed. Please try again.");
         },
       });
     } catch (error) {
-      setError(getErrorMessage(error));
+      showError(getErrorMessage(error));
     }
   };
 
   return (
     <BuyerLayout breadcrumb="Marketplace / Checkout">
+      <ToastContainer />
       <div className="mx-auto  space-y-6 pb-10">
         <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
           <h2 className="text-lg font-semibold text-slate-900">

@@ -21,6 +21,7 @@ import BuyerOrders from "./Buyers/Orders";
 import BuyerDisputes from "./Buyers/Disputes";
 import BuyerSettings from "./Buyers/Settings";
 import Checkout from "./Buyers/Checkout";
+import ProduceDetail from "./Buyers/ProduceDetail";
 import ProtectedRoute from "./components/ProtectedRoute";
 import EditListing from "./Admin/EditListing";
 
@@ -145,6 +146,14 @@ function App() {
             element={
               <ProtectedRoute allowedRoles={["user"]}>
                 <BuyerSettings />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/marketplace/produce/:id"
+            element={
+              <ProtectedRoute allowedRoles={["user"]}>
+                <ProduceDetail />
               </ProtectedRoute>
             }
           />

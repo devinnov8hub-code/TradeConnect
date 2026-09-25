@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { MapPin, Plus } from "lucide-react";
 import BuyerLayout from "../components/BuyerLayout";
 import { useCart } from "./CartContext";
@@ -24,6 +25,7 @@ const cardBg = [
 ];
 
 export const Marketplace = () => {
+  const navigate = useNavigate();
   const [activeCategory, setActiveCategory] = useState(ALL_PRODUCE);
   const [listings, setListings] = useState<Listing[]>([]);
   const [metrics, setmetrics] = useState<MarketplaceSummary | null>(null);
@@ -192,7 +194,8 @@ export const Marketplace = () => {
             {filtered.map((product, idx) => (
               <div
                 key={product.id}
-                className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm"
+                onClick={() => navigate(`/marketplace/produce/${product.id}`)}
+                className="cursor-pointer rounded-3xl border border-slate-200 bg-white p-4 shadow-sm transition hover:shadow-md"
               >
                 <img
                   className={`flex h-28 w-full items-center justify-center rounded-2xl object-cover text-5xl ${cardBg[idx % cardBg.length]}`}
@@ -218,7 +221,10 @@ export const Marketplace = () => {
                       {formatNaira(Number(product.price))}/{product.unit}
                     </p>
                     <button
-                      onClick={() => addToCart(product)}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        addToCart(product);
+                      }}
                       className="flex items-center gap-1 rounded-lg bg-[#4A7C2A] px-3 py-1.5 text-xs font-semibold text-white hover:bg-[#3A6C1A]"
                     >
                       <Plus className="h-3.5 w-3.5" />
