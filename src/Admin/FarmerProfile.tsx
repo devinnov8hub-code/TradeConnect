@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import {
   ArrowLeft,
@@ -8,7 +8,18 @@ import {
   Package,
   ShieldCheck,
   AlertTriangle,
+  TrendingDown,
+  TrendingUp,
 } from "lucide-react";
+import {
+  CartesianGrid,
+  Line,
+  LineChart,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from "recharts";
 import Layout from "../components/Layout";
 import Avatar from "../components/Avatar";
 import StatusBadge from "../components/StatusBadge";
@@ -18,12 +29,14 @@ import {
   setFarmerStatus,
   setFarmerVerification,
 } from "../lib/services/farmers.service";
+import { getDashboardPayouts } from "../lib/services/dashboard.service";
 import {
   type Farmer,
   type FarmerVerificationStatus,
 } from "../lib/types/farmer";
+import type { DashboardPayouts, DashboardPeriod } from "../lib/types/dashboard";
 import { getErrorMessage } from "../lib/getErrorMessage";
-import { formatDate, formatDays } from "../lib/format";
+import { formatDate, formatDays, formatNaira } from "../lib/format";
 import type { Activity, ActivityType } from "../lib/types/activity";
 
 const tabs = ["Overview", "Listings", "Orders", "Activity Log"] as const;
@@ -58,7 +71,6 @@ export default function FarmerProfile() {
       try {
         const response = await getFarmerActivities(farmerId);
         setFarmerActivity(response);
-        console.log("farmer activity", response);
       } catch (error) {
         getErrorMessage(error);
       }
@@ -210,7 +222,11 @@ export default function FarmerProfile() {
         {/* Tab content */}
         <div className="mt-6">
           {activeTab === "Overview" && (
-            <OverviewTab farmer={farmer} activities={farmerActivity} />
+            <OverviewTab
+              farmer={farmer}
+              activities={farmerActivity}
+              farmerId={farmerId}
+            />
           )}
           {activeTab === "Listings" && <ListingsTab farmer={farmer} />}
           {activeTab === "Orders" && <OrdersTab farmer={farmer} />}
@@ -223,15 +239,188 @@ export default function FarmerProfile() {
   );
 }
 
+const REVENUE_PERIODS: DashboardPeriod[] = ["week", "month", "year"];
+
+interface RevenuePoint {
+  label: string;
+  amount: number;
+}
+
+// The `series`/`peak` shapes aren't documented with a literal example (the API
+// docs show them as `[]`/`{}` in every sample response), so read them
+// defensively against a handful of plausible key names instead of assuming one.
+function normalizeSeries(series: unknown[] | undefined): RevenuePoint[] {
+  if (!series?.length) return [];
+  return series.map((raw, idx) => {
+    const entry = (raw ?? {}) as Record<string, unknown>;
+    const label =
+      entry.label ?? entry.period ?? entry.bucket ?? entry.date ?? entry.month;
+    const amount =
+      entry.paid_out ?? entry.amount ?? entry.total ?? entry.value ?? entry.revenue;
+    return {
+      label: label != null ? String(label) : `#${idx + 1}`,
+      amount: Number(amount) || 0,
+    };
+  });
+}
+
+function normalizePeak(peak: Record<string, unknown> | undefined) {
+  if (!peak || Object.keys(peak).length === 0) return null;
+  const label = peak.label ?? peak.period ?? peak.bucket ?? peak.month ?? peak.date;
+  const amount = peak.paid_out ?? peak.amount ?? peak.total ?? peak.value;
+  if (label == null && amount == null) return null;
+  return {
+    label: label != null ? String(label) : "—",
+    amount: amount != null ? Number(amount) : null,
+  };
+}
+
+function FarmerRevenueChart({ farmerId }: { farmerId: number }) {
+  const [period, setPeriod] = useState<DashboardPeriod>("month");
+  const [payouts, setPayouts] = useState<DashboardPayouts | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let ignore = false;
+    const loadPayouts = async () => {
+      setLoading(true);
+      try {
+        const response = await getDashboardPayouts({ period, farmer_id: farmerId });
+        if (!ignore) setPayouts(response);
+      } catch (error) {
+        getErrorMessage(error);
+      } finally {
+        if (!ignore) setLoading(false);
+      }
+    };
+    loadPayouts();
+    return () => {
+      ignore = true;
+    };
+  }, [period, farmerId]);
+
+  const series = useMemo(() => normalizeSeries(payouts?.series), [payouts]);
+  const peak = useMemo(
+    () => normalizePeak(payouts?.summary.peak as Record<string, unknown> | undefined),
+    [payouts],
+  );
+  const changePercent = payouts?.summary.change_percent ?? 0;
+
+  return (
+    <div className="rounded-2xl border border-slate-100 p-5">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <p className="text-sm font-medium text-slate-500">Revenue</p>
+          <h3 className="mt-0.5 text-base font-semibold text-slate-900">
+            Payouts released to this farmer
+          </h3>
+        </div>
+        <div className="inline-flex items-center rounded-2xl bg-slate-100 p-1 text-xs">
+          {REVENUE_PERIODS.map((p) => (
+            <button
+              key={p}
+              onClick={() => setPeriod(p)}
+              className={`rounded-xl px-3 py-1.5 font-medium capitalize transition ${
+                period === p
+                  ? "bg-white text-slate-900 shadow-sm"
+                  : "text-slate-500 hover:text-slate-800"
+              }`}
+            >
+              {p}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div className="mt-5 grid gap-3 sm:grid-cols-4">
+        <div className="rounded-2xl bg-global-bg p-4 text-sm">
+          <p className="font-semibold text-slate-900">Paid out</p>
+          <p className="mt-2 text-xl font-semibold text-slate-900">
+            {formatNaira(Number(payouts?.summary.paid_out ?? 0))}
+          </p>
+          <p
+            className={`mt-1 flex items-center gap-1 text-xs ${
+              changePercent >= 0 ? "text-success" : "text-rose-600"
+            }`}
+          >
+            {changePercent >= 0 ? (
+              <TrendingUp className="h-3.5 w-3.5" />
+            ) : (
+              <TrendingDown className="h-3.5 w-3.5" />
+            )}
+            {changePercent >= 0 ? "+" : ""}
+            {changePercent.toFixed(1)}% vs prior {period}
+          </p>
+        </div>
+        <div className="rounded-2xl bg-global-bg p-4 text-sm">
+          <p className="font-semibold text-slate-900">Payouts</p>
+          <p className="mt-2 text-xl font-semibold text-slate-900">
+            {payouts?.summary.payouts_count ?? 0}
+          </p>
+          <p className="mt-1 text-xs text-slate-500">Released this {period}</p>
+        </div>
+        <div className="rounded-2xl bg-global-bg p-4 text-sm">
+          <p className="font-semibold text-slate-900">Avg per period</p>
+          <p className="mt-2 text-xl font-semibold text-slate-900">
+            {formatNaira(Number(payouts?.summary.average_per_bucket ?? 0))}
+          </p>
+          <p className="mt-1 text-xs text-slate-500">Across the series</p>
+        </div>
+        <div className="rounded-2xl bg-global-bg p-4 text-sm">
+          <p className="font-semibold text-slate-900">Peak</p>
+          <p className="mt-2 text-xl font-semibold text-slate-900">
+            {peak?.label ?? "—"}
+          </p>
+          <p className="mt-1 text-xs text-slate-500">
+            {peak?.amount != null ? formatNaira(peak.amount) : "No data yet"}
+          </p>
+        </div>
+      </div>
+
+      <div className="mt-6 h-64">
+        {loading ? (
+          <div className="flex h-full items-center justify-center">
+            <div className="loader"></div>
+          </div>
+        ) : series.length === 0 ? (
+          <div className="flex h-full items-center justify-center text-sm text-slate-500">
+            No payout activity yet for this period.
+          </div>
+        ) : (
+          <ResponsiveContainer width="100%" height="100%">
+            <LineChart data={series} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+              <CartesianGrid stroke="#e2e8f0" strokeDasharray="4 4" vertical={false} />
+              <XAxis dataKey="label" tickLine={false} axisLine={false} />
+              <YAxis tickLine={false} axisLine={false} />
+              <Tooltip formatter={(value) => formatNaira(Number(value))} />
+              <Line
+                type="monotone"
+                dataKey="amount"
+                stroke="#27AE60"
+                strokeWidth={2}
+                dot={{ r: 4, fill: "#27AE60" }}
+              />
+            </LineChart>
+          </ResponsiveContainer>
+        )}
+      </div>
+    </div>
+  );
+}
+
 function OverviewTab({
   farmer,
   activities,
+  farmerId,
 }: {
   farmer: Farmer | null;
   activities: Activity[];
+  farmerId: number;
 }) {
   return (
-    <div className="grid gap-6 lg:grid-cols-2">
+    <div className="space-y-6">
+      <FarmerRevenueChart farmerId={farmerId} />
+      <div className="grid gap-6 lg:grid-cols-2">
       {/* Farm Information */}
       <div className="space-y-5">
         <div className="rounded-2xl border border-slate-100 p-5">
@@ -364,6 +553,7 @@ function OverviewTab({
           </div>
         </div>
       </div>
+      </div>
     </div>
   );
 }
@@ -413,6 +603,10 @@ function ListingsTab({ farmer }: { farmer: Farmer | null }) {
 }
 
 function OrdersTab({ farmer }: { farmer: Farmer | null }) {
+  if (!farmer?.recent_orders || farmer.recent_orders.length === 0) {
+    return <p className="text-sm text-slate-500">No order yet.</p>;
+  }
+
   return (
     <div className="overflow-x-auto">
       <table className="w-full min-w-120 text-left text-sm">
@@ -426,7 +620,7 @@ function OrdersTab({ farmer }: { farmer: Farmer | null }) {
           </tr>
         </thead>
         <tbody>
-          {farmer?.recent_orders?.map((order, idx) => (
+          {farmer.recent_orders.map((order, idx) => (
             <tr key={idx} className="border-t border-slate-100">
               <td className="py-3">
                 <p className="font-medium text-slate-900">

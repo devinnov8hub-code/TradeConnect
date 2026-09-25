@@ -13,18 +13,33 @@ const PAGE_SIZE = 10;
 export default function Buyers() {
   const [page, setPage] = useState(1);
   const [buyers, setBuyers] = useState<Buyer[]>([]);
+  const [total, setTotal] = useState(0);
+  const [pageCount, setPageCount] = useState(1);
   const [loading, setLoading] = useState(false);
+  const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
 
-  const pageCount = Math.ceil(buyers.length / PAGE_SIZE) || 1;
+  // Debounce the search box so it doesn't fire a request per keystroke.
+  useEffect(() => {
+    const timeout = setTimeout(() => {
+      setDebouncedSearch(search);
+      setPage(1);
+    }, 300);
+    return () => clearTimeout(timeout);
+  }, [search]);
 
   useEffect(() => {
     const fetchBuyers = async () => {
       setLoading(true);
       try {
-        const response = await getBuyers({ page, per_page: PAGE_SIZE });
-        console.log("Buyers response:", response);
+        const response = await getBuyers({
+          page,
+          per_page: PAGE_SIZE,
+          search: debouncedSearch || undefined,
+        });
         setBuyers(response.data);
-        console.log("Buyers data:", response.data);
+        setTotal(response.meta.total);
+        setPageCount(response.meta.last_page || 1);
       } catch (error) {
         getErrorMessage(error);
       } finally {
@@ -32,7 +47,12 @@ export default function Buyers() {
       }
     };
     fetchBuyers();
-  }, [page]);
+  }, [page, debouncedSearch]);
+
+  const locationFor = (buyer: Buyer) =>
+    [buyer.lga, buyer.state].filter(Boolean).join(", ") ||
+    buyer.address ||
+    "—";
 
   return (
     <Layout breadcrumb="Users / Buyers" compact>
@@ -40,6 +60,8 @@ export default function Buyers() {
         <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <input
             type="search"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
             placeholder="Search buyers..."
             className="w-full rounded-lg border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm focus:outline-none sm:w-80"
           />
@@ -82,7 +104,7 @@ export default function Buyers() {
                     </div>
                   </div>
                 </td>
-                <td className="py-3 text-slate-600">{buyer.address}</td>
+                <td className="py-3 text-slate-600">{locationFor(buyer)}</td>
                 <td className="py-3 text-slate-600">{buyer.orders_count}</td>
                 <td className="py-3">
                   <StatusBadge status={buyer.status} />
@@ -101,7 +123,7 @@ export default function Buyers() {
         <Pagination
           page={page}
           pageCount={pageCount}
-          total={buyers.length}
+          total={total}
           pageSize={PAGE_SIZE}
           onPageChange={setPage}
         />

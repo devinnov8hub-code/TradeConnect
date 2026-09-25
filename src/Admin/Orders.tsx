@@ -21,13 +21,17 @@ import { getErrorMessage } from "../lib/getErrorMessage";
 import { formatDate } from "../lib/format";
 import { useSearchParams } from "react-router-dom";
 
+const PAGE_SIZE = 10;
+
 export default function Orders() {
   const [page, setPage] = useState(1);
   const [orders, setOrders] = useState<Order[]>([]);
+  const [total, setTotal] = useState(0);
+  const [pageCount, setPageCount] = useState(1);
   const [selected, setSelected] = useState<Order | null>(null);
   const [updatingStatus, setUpdatingStatus] = useState(false);
-  const PAGE_SIZE = 10;
-  const pageCount = Math.ceil(orders.length / PAGE_SIZE) || 1;
+  const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
   const [searchParams, setSearchParams] = useSearchParams();
   const selectedOrderNumber = searchParams.get("order");
 
@@ -85,11 +89,26 @@ export default function Orders() {
           ? 5
           : 0;
 
+  // Debounce the search box so it doesn't fire a request per keystroke.
+  useEffect(() => {
+    const timeout = setTimeout(() => {
+      setDebouncedSearch(search);
+      setPage(1);
+    }, 300);
+    return () => clearTimeout(timeout);
+  }, [search]);
+
   useEffect(() => {
     const getOrders = async () => {
       try {
-        const response = await getAllOrders({ page });
+        const response = await getAllOrders({
+          page,
+          per_page: PAGE_SIZE,
+          search: debouncedSearch || undefined,
+        });
         setOrders(response.data);
+        setTotal(response.meta.total);
+        setPageCount(response.meta.last_page || 1);
 
         const activeOrder =
           selectedOrderNumber !== null
@@ -112,7 +131,7 @@ export default function Orders() {
     };
 
     getOrders();
-  }, [page, selectedOrderNumber, setSearchParams]);
+  }, [page, debouncedSearch, selectedOrderNumber, setSearchParams]);
 
   return (
     <Layout breadcrumb="Orders / All orders" compact>
@@ -257,6 +276,8 @@ export default function Orders() {
           </div>
           <div className="flex flex-wrap items-center gap-3">
             <input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
               placeholder="Search orders..."
               className="w-full flex-1 rounded-lg border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm focus:outline-none sm:w-65 sm:flex-none"
             />
@@ -351,7 +372,7 @@ export default function Orders() {
         <Pagination
           page={page}
           pageCount={pageCount}
-          total={orders.length}
+          total={total}
           pageSize={PAGE_SIZE}
           onPageChange={setPage}
         />

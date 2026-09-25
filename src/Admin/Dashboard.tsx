@@ -403,7 +403,7 @@ const Dashboard = () => {
           onClick={() => setShowActivity(false)}
         >
           <div
-            className="h-full w-full max-w-sm overflow-y-auto bg-white shadow-2xl"
+            className="h-full w-full max-w-2xl overflow-y-auto bg-white shadow-2xl"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between border-b border-slate-100 px-6 py-5">
@@ -442,7 +442,7 @@ const Dashboard = () => {
                           {item.status}
                         </p>
                         <p className="text-xs text-slate-400">
-                          {item.occurred_at}
+                          {formatDays(item.occurred_at)}
                         </p>
                       </div>
                     </div>

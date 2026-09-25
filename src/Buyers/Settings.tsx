@@ -112,7 +112,7 @@ export default function Settings() {
       applyUser(response);
       toast.success("Profile photo updated");
     } catch (error) {
-      toast.error(getErrorMessage(error));
+      toast.error(`Unable to upload photo: ${getErrorMessage(error)}`);
     } finally {
       setUploadingPhoto(false);
     }
