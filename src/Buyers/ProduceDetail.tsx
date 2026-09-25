@@ -366,7 +366,7 @@ export default function ProduceDetail() {
                 </dd>
               </div>
               <div className="flex justify-between">
-                <dt className="text-slate-500">Unit</dt>
+                <dt className="text-slate-500">Stock</dt>
                 <dd className="font-medium text-slate-800">
                   {unit} units available
                 </dd>
