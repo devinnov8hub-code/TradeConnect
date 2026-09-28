@@ -12,6 +12,7 @@ export interface CartItem extends CreateOrderItemPayload {
   image: string | null;
   stock: number;
   delivery_fee_per_unit: number;
+  minimum_order_quantity: number;
 }
 
 interface CartContextValue {
@@ -33,6 +34,9 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
 
   const addItem = (listing: Listing) => {
     if (listing.stock <= 0) return;
+    // New items must start at the listing's minimum order quantity
+    const minQty = Math.max(listing.minimum_order_quantity ?? 1, 1);
+
     setItems((prev) => {
       const existing = prev.find((item) => item.listing_id === listing.id);
       if (existing) {
@@ -47,7 +51,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         ...prev,
         {
           listing_id: listing.id,
-          quantity: 1,
+          quantity: Math.min(minQty, listing.stock),
           produce_name: listing.produce.name,
           category_name: listing.produce.category.name,
           unit: listing.unit ?? "unit",
@@ -55,6 +59,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
           image: listing.primary_image_url ?? listing.produce.image_url,
           stock: listing.stock,
           delivery_fee_per_unit: listing.delivery_fee_per_unit ?? 0,
+          minimum_order_quantity: minQty,
         },
       ];
     });
@@ -65,11 +70,16 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   };
 
   const updateQty = (listingId: number, qty: number) => {
-    if (qty < 1) return;
     setItems((prev) =>
       prev.map((item) =>
         item.listing_id === listingId
-          ? { ...item, quantity: Math.min(qty, item.stock) }
+          ? {
+              ...item,
+              quantity: Math.min(
+                Math.max(qty, item.minimum_order_quantity),
+                item.stock,
+              ),
+            }
           : item,
       ),
     );

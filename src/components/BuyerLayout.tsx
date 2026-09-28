@@ -75,7 +75,9 @@ export default function BuyerLayout({
         ></div>
       )}
       {/* Sidebar — fixed width, full height */}
-      <aside  className={`fixed inset-y-4 left-4 z-50 flex w-68 flex-col rounded-3xl bg-primary shadow-sm overflow-hidden transition-transform duration-300 md:static md:z-auto md:translate-x-0 ${openSidebar ? "translate-x-0" : "translate-x-[-120%]"}`}>
+      <aside
+        className={`fixed inset-y-4 left-4 z-50 flex w-68 flex-col rounded-3xl bg-primary shadow-sm overflow-hidden transition-transform duration-300 md:static md:z-auto md:translate-x-0 ${openSidebar ? "translate-x-0" : "translate-x-[-120%]"}`}
+      >
         <div className="flex items-center gap-3 px-6 pt-6 pb-8">
           <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-white/10 text-white">
             <img src={whiteLogo} alt="TradeConnect" className="h-10 w-auto" />
@@ -127,30 +129,41 @@ export default function BuyerLayout({
         </div>
       </aside>
 
-      <div className="flex flex-1 min-w-0 flex-col gap-4 overflow-y-auto py-4 pr-4">
+      <div className="flex flex-1 min-w-0 flex-col gap-4 overflow-y-auto py-4 pr-3">
         {/* Header */}
         <div className="flex shrink-0 items-center justify-between rounded-3xl border border-slate-200 bg-white px-6 py-4 shadow-sm">
           <p className="text-sm text-slate-600">{breadcrumb}</p>
-          <div className="flex items-center gap-4">
+
+          <div className="flex items-center gap-6">
+            {/* Cart */}
             <button
               onClick={() => setCartOpen(true)}
-              className="relative flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 text-slate-500 hover:bg-slate-100"
+              className="relative flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-slate-200 text-slate-500 hover:bg-slate-100"
             >
               <ShoppingBag className="h-4 w-4" />
+
               {count > 0 && (
                 <span className="absolute -top-1.5 -right-1.5 flex h-4.5 min-w-4.5 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-semibold text-white">
                   {count}
                 </span>
               )}
             </button>
-            <button className="flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 text-slate-500 hover:bg-slate-100">
+            {/* <button className="flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 text-slate-500 hover:bg-slate-100">
               <Bell className="h-4 w-4" />
-            </button>
+            </button>  */}
+            
+            {/* User */}
             <div className="flex items-center gap-3">
               <Avatar name={buyer?.name ?? ""} />
-              <div className="text-sm">
-                <p className="font-medium text-slate-900">{buyer?.name}</p>
-                <p className="text-xs text-slate-400">{buyer?.account_code}</p>
+
+              <div className="min-w-0 text-sm">
+                <p className="truncate font-medium text-slate-900">
+                  {buyer?.name}
+                </p>
+
+                <p className="truncate text-xs text-slate-400">
+                  {buyer?.account_code}
+                </p>
               </div>
             </div>
           </div>

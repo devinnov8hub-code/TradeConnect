@@ -190,7 +190,7 @@ export const Marketplace = () => {
               No listings available.
             </div>
           )}
-          <div className="grid grid-cols-2 gap-5 sm:grid-cols-3 lg:grid-cols-4">
+          <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
             {filtered.map((product, idx) => (
               <div
                 key={product.id}
@@ -216,16 +216,21 @@ export const Marketplace = () => {
                   <p className="mt-1 text-xs text-slate-400">
                     {product.stock} {product.unit} available
                   </p>
-                  <div className="mt-3 flex items-center justify-between">
+                  {(product.minimum_order_quantity ?? 1) > 1 && (
+                    <p className="mt-1 text-xs text-slate-400">
+                      Min {product.minimum_order_quantity} {product.unit ?? "unit"}
+                    </p>
+                  )}
+                  <div className="mt-3 flex flex-col gap-2 lg:flex-row lg:items-center lg:justify-between">
                     <p className="text-sm font-semibold text-primary">
-                      {formatNaira(Number(product.price))}/{product.unit}
+                      {formatNaira(Number(product.price))} <span className="text-xs">per unit</span>
                     </p>
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
                         addToCart(product);
                       }}
-                      className="flex items-center gap-1 rounded-lg bg-[#4A7C2A] px-3 py-1.5 text-xs font-semibold text-white hover:bg-[#3A6C1A]"
+                      className="flex w-full items-center justify-center gap-1 rounded-lg bg-[#4A7C2A] px-3 py-2 text-xs font-semibold text-white hover:bg-[#3A6C1A] lg:w-auto"
                     >
                       <Plus className="h-3.5 w-3.5" />
                       Add to Cart

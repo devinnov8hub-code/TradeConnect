@@ -38,7 +38,14 @@ export default function CartDrawer({
           ) : (
             <div className="space-y-4">
               {items.map((item) => (
-                <div key={item.listing_id} className="flex items-center gap-3">
+                <div
+                  key={item.listing_id}
+                  className="flex items-center gap-3 cursor-pointer"
+                  onClick={() => {
+                    onClose();
+                    navigate(`/marketplace/produce/${item.listing_id}`);
+                  }}
+                >
                   {item.image ? (
                     <img
                       src={item.image}
@@ -56,11 +63,21 @@ export default function CartDrawer({
                     <p className="mt-0.5 text-xs font-semibold text-primary">
                       {formatNaira(item.price)}/{item.unit}
                     </p>
+                    {item.minimum_order_quantity > 1 && (
+                      <p className="mt-0.5 text-[11px] text-slate-400">
+                        Min {item.minimum_order_quantity}
+                        {item.unit}
+                      </p>
+                    )}
                   </div>
-                  <div className="flex items-center gap-2 rounded-lg border border-slate-200 px-1.5 py-1">
+                  <div
+                    className="flex items-center gap-2 rounded-lg border border-slate-200 px-1.5 py-1"
+                    onClick={(e) => e.stopPropagation()}
+                  >
                     <button
                       onClick={() => updateQty(item.listing_id, item.quantity - 1)}
-                      className="flex h-6 w-6 items-center justify-center text-slate-500 hover:text-slate-900"
+                      disabled={item.quantity <= item.minimum_order_quantity}
+                      className="flex h-6 w-6 items-center justify-center text-slate-500 hover:text-slate-900 disabled:cursor-not-allowed disabled:opacity-40"
                     >
                       <Minus className="h-3 w-3" />
                     </button>
@@ -74,7 +91,10 @@ export default function CartDrawer({
                     </button>
                   </div>
                   <button
-                    onClick={() => removeItem(item.listing_id)}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      removeItem(item.listing_id);
+                    }}
                     className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-rose-500 hover:bg-rose-50"
                   >
                     <Trash2 className="h-4 w-4" />

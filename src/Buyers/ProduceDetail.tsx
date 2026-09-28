@@ -108,7 +108,6 @@ export default function ProduceDetail() {
           response.data.filter((item) => item.id !== listing.id).slice(0, 6),
         );
       } catch (err) {
-        // Similar products are a nice-to-have — don't block the page on it.
         getErrorMessage(err);
       }
     };
@@ -425,9 +424,10 @@ export default function ProduceDetail() {
                   <p className="mt-1 text-xs text-slate-400">
                     {product.stock} {product.unit} available
                   </p>
-                  <div className="mt-3 flex items-center justify-between">
+                  <div className="mt-3 flex flex-col gap-2 lg:flex-row lg:items-center lg:justify-between">
                     <p className="text-sm font-semibold text-primary">
-                      {formatNaira(Number(product.price))}/{product.unit}
+                      {formatNaira(Number(product.price))}{" "}
+                      <span className="text-xs">per unit</span>
                     </p>
                     <button
                       onClick={(e) => {
