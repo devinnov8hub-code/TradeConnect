@@ -1,5 +1,4 @@
 import {
-  Bell,
   ClipboardList,
   LayoutGrid,
   MessageSquare,
