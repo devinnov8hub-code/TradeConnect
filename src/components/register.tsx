@@ -99,7 +99,7 @@ const Register = () => {
 
   return (
     <AuthLayout
-      cardTitle="Create Admin Account"
+      cardTitle="Create an Account"
       cardSubtitle={
         <>
           Get started with{" "}
