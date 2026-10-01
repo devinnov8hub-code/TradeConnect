@@ -1,8 +1,9 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   ClipboardList,
   Package,
   ShoppingBag,
+  TrendingDown,
   TrendingUp,
   Users,
   X,
@@ -19,9 +20,14 @@ import {
   ResponsiveContainer,
 } from "recharts";
 import Layout from "../components/Layout";
-import { type DashboardStats } from "../lib/types/dashboard";
+import {
+  type DashboardPeriod,
+  type DashboardRevenue,
+  type DashboardStats,
+} from "../lib/types/dashboard";
 import { type AuthUser } from "../lib/types/auth";
 import {
+  getDashboardRevenue,
   getDashboardStats,
   getNotifications,
   getRecentActivities,
@@ -29,20 +35,45 @@ import {
 import { updateOrderStatus } from "../lib/services/orders.service";
 import { getCurrentUser } from "../lib/services/auth.service";
 import { getErrorMessage } from "../lib/getErrorMessage";
-import { formatDate, formatDays } from "../lib/format";
+import { formatDate, formatDays, formatNaira } from "../lib/format";
 import { useNavigate } from "react-router";
 import type { Activity } from "../lib/types/activity";
 import type { Notification } from "../lib/types/notification";
 
-const revenueData = [
-  { month: "Jan", revenue: 22 },
-  { month: "Feb", revenue: 38 },
-  { month: "Mar", revenue: 45 },
-  { month: "Apr", revenue: 55 },
-  { month: "May", revenue: 62 },
-  { month: "Jun", revenue: 73 },
-  { month: "Jul", revenue: 88 },
-];
+// Axis ticks only — keeps large amounts (e.g. ₦400,000) from being clipped.
+const formatCompactNaira = (value: number) =>
+  `₦${new Intl.NumberFormat("en-NG", {
+    notation: "compact",
+    maximumFractionDigits: 1,
+  }).format(value)}`;
+
+const REVENUE_PERIODS: DashboardPeriod[] = ["week", "month", "year"];
+
+interface RevenuePoint {
+  label: string;
+  amount: number;
+}
+
+// The `series` shape isn't documented with a literal example (the API
+// docs show them as `[]`/`{}` in every sample response), so read them
+// defensively against a handful of plausible key names instead of assuming one.
+function normalizeSeries(series: unknown[] | undefined): RevenuePoint[] {
+  if (!series?.length) return [];
+  return series.map((raw, idx) => {
+    const entry = (raw ?? {}) as Record<string, unknown>;
+    const label =
+      entry.label ?? entry.period ?? entry.bucket ?? entry.date ?? entry.month;
+    const amount =
+      entry.revenue ??
+      entry.amount ??
+      entry.total ??
+      entry.value;
+    return {
+      label: label != null ? String(label) : `#${idx + 1}`,
+      amount: Number(amount) || 0,
+    };
+  });
+}
 
 const Dashboard = () => {
   const [showActivity, setShowActivity] = useState(false);
@@ -56,7 +87,48 @@ const Dashboard = () => {
   const [processingOrderId, setProcessingOrderId] = useState<number | null>(
     null,
   );
+  const [revenuePeriod, setRevenuePeriod] = useState<DashboardPeriod>("year");
+  const [revenue, setRevenue] = useState<DashboardRevenue | null>(null);
+  const [revenueLoading, setRevenueLoading] = useState(true);
   const navigate = useNavigate();
+
+  useEffect(() => {
+    let ignore = false;
+    const loadRevenue = async () => {
+      setRevenueLoading(true);
+      try {
+        const response = await getDashboardRevenue({ period: revenuePeriod });
+        if (!ignore) setRevenue(response);
+      } catch (error) {
+        getErrorMessage(error);
+      } finally {
+        if (!ignore) setRevenueLoading(false);
+      }
+    };
+    loadRevenue();
+    return () => {
+      ignore = true;
+    };
+  }, [revenuePeriod]);
+
+  const revenueSeries = useMemo(
+    () => normalizeSeries(revenue?.series),
+    [revenue],
+  );
+  // The revenue response has no `peak` summary, so derive it from the series.
+  const revenuePeak = useMemo(
+    () =>
+      revenueSeries.reduce<RevenuePoint | null>(
+        (best, point) =>
+          point.amount > 0 && (!best || point.amount > best.amount)
+            ? point
+            : best,
+        null,
+      ),
+    [revenueSeries],
+  );
+  const revenueChange = revenue?.summary.change_percent ?? 0;
+  const totalRevenue = Number(revenue?.summary.revenue ?? 0);
 
   const handleProcessOrder = async (
     e: React.MouseEvent,
@@ -224,36 +296,51 @@ const Dashboard = () => {
                   Farmer's revenue flow
                 </p>
                 <h2 className="mt-2 text-2xl font-semibold text-slate-900">
-                  Monthly payouts recovered to verified farmers
+                  Sales from paid orders across farmers
                 </h2>
               </div>
-              <div className="inline-flex items-center gap-2 rounded-2xl bg-slate-100 px-4 py-2 text-sm text-slate-700">
-                <TrendingUp className="h-4 w-4 text-emerald-600" />
-                Week
+              <div className="inline-flex items-center rounded-2xl bg-slate-100 p-1 text-sm">
+                {REVENUE_PERIODS.map((p) => (
+                  <button
+                    key={p}
+                    onClick={() => setRevenuePeriod(p)}
+                    className={`rounded-xl px-4 py-1.5 font-medium capitalize transition ${
+                      revenuePeriod === p
+                        ? "bg-white text-slate-900 shadow-sm"
+                        : "text-slate-500 hover:text-slate-800"
+                    }`}
+                  >
+                    {p}
+                  </button>
+                ))}
               </div>
             </div>
 
             <div className="mt-6 grid gap-3 sm:grid-cols-4">
               {[
                 {
-                  label: "Total paid out",
-                  value: "₦327,000",
-                  sub: "+3.6% vs prior period",
+                  label: "Total revenue",
+                  value: formatNaira(totalRevenue),
+                  sub: `${revenueChange >= 0 ? "+" : ""}${revenueChange.toFixed(1)}% vs prior ${revenuePeriod}`,
+                  positive: revenueChange >= 0,
                 },
                 {
-                  label: "Peak month",
-                  value: "July",
-                  sub: "Highest on record",
+                  label: "Peak",
+                  value: revenuePeak?.label ?? "—",
+                  sub: revenuePeak ? formatNaira(revenuePeak.amount) : "No data yet",
+                  positive: true,
                 },
                 {
-                  label: "Avg monthly",
-                  value: "₦46,700",
-                  sub: "+12.6% vs last month",
+                  label: "Paid orders",
+                  value: String(revenue?.summary.paid_orders ?? 0),
+                  sub: `This ${revenuePeriod}`,
+                  positive: true,
                 },
                 {
-                  label: "Active Farmers",
-                  value: "84",
-                  sub: "Earnings for this period",
+                  label: "Items sold",
+                  value: String(revenue?.summary.paid_order_items ?? 0),
+                  sub: `This ${revenuePeriod}`,
+                  positive: true,
                 },
               ].map((s) => (
                 <div
@@ -262,40 +349,69 @@ const Dashboard = () => {
                 >
                   <p className="font-semibold text-slate-900">{s.label}</p>
                   <p className="mt-3 text-2xl font-semibold">{s.value}</p>
-                  <p className="mt-2 text-success">{s.sub}</p>
+                  <p
+                    className={`mt-2 flex items-center gap-1 ${
+                      s.positive ? "text-success" : "text-rose-600"
+                    }`}
+                  >
+                    {s.label === "Total revenue" &&
+                      (s.positive ? (
+                        <TrendingUp className="h-3.5 w-3.5" />
+                      ) : (
+                        <TrendingDown className="h-3.5 w-3.5" />
+                      ))}
+                    {s.sub}
+                  </p>
                 </div>
               ))}
             </div>
 
             <div className="mt-6 h-120">
-              <ResponsiveContainer width="100%" height="100%">
-                <LineChart
-                  data={revenueData}
-                  margin={{ top: 10, right: 10, left: 0, bottom: 0 }}
-                >
-                  <CartesianGrid
-                    stroke="#95321C"
-                    strokeDasharray="4 4"
-                    vertical={true}
+              {revenueLoading ? (
+                <div className="flex h-full items-center justify-center">
+                  <div className="loader"></div>
+                </div>
+              ) : revenueSeries.length === 0 ? (
+                <div className="flex h-full items-center justify-center text-sm text-slate-500">
+                  No sales yet for this period.
+                </div>
+              ) : (
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart
+                    data={revenueSeries}
+                    margin={{ top: 10, right: 10, left: 0, bottom: 0 }}
+                  >
+                    <CartesianGrid
+                      stroke="#95321C"
+                      strokeDasharray="4 4"
+                      vertical={true}
+                    />
+                    <XAxis dataKey="label" tickLine={false} axisLine={false} />
+                    <YAxis
+                    tickLine={false}
+                    axisLine={false}
+                    width={70}
+                    tickFormatter={(value) => formatCompactNaira(Number(value))}
                   />
-                  <XAxis dataKey="month" tickLine={false} axisLine={false} />
-                  <YAxis tickLine={false} axisLine={false} />
-                  <Tooltip formatter={(value) => `₦${value}k`} />
-                  <Line
-                    type="monotone"
-                    dataKey="revenue"
-                    stroke="#27AE60"
-                    strokeWidth={3}
-                    dot={{ r: 4, fill: "#27AE60" }}
-                  />
-                </LineChart>
-              </ResponsiveContainer>
+                    <Tooltip formatter={(value) => formatNaira(Number(value))} />
+                    <Line
+                      type="monotone"
+                      dataKey="amount"
+                      stroke="#27AE60"
+                      strokeWidth={3}
+                      dot={{ r: 4, fill: "#27AE60" }}
+                    />
+                  </LineChart>
+                </ResponsiveContainer>
+              )}
             </div>
 
             <div className="mt-6 ml-8 flex items-center gap-4">
               <div className="h-3 w-6 rounded-full bg-success" />
-              <p className="font-medium text-primary">Farmer Payout (₦) --</p>
-              <h2 className="text-xl font-semibold text-slate-900">₦327,000</h2>
+              <p className="font-medium text-primary">Farmer Revenue (₦) --</p>
+              <h2 className="text-xl font-semibold text-slate-900">
+                {formatNaira(totalRevenue)}
+              </h2>
             </div>
           </section>
 

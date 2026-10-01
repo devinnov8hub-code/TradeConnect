@@ -150,7 +150,7 @@ export default function BuyerLayout({
             {/* <button className="flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 text-slate-500 hover:bg-slate-100">
               <Bell className="h-4 w-4" />
             </button>  */}
-            
+                        
             {/* User */}
             <div className="flex items-center gap-3">
               <Avatar name={buyer?.name ?? ""} />
